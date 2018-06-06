@@ -19,6 +19,10 @@ import { WebviewDirective } from './directives/webview.directive';
 
 import { AppComponent } from './app.component';
 import { HomeComponent } from './components/home/home.component';
+import { MysqlService } from './providers/mysql.service';
+import { ApiService } from './providers/api.service';
+import { HighchartsChartComponent } from './components/highcharts-chart/highcharts-chart.component';
+import { ParamService } from './providers/param.service';
 
 // AoT requires an exported function for factories
 export function HttpLoaderFactory(http: HttpClient) {
@@ -29,7 +33,8 @@ export function HttpLoaderFactory(http: HttpClient) {
   declarations: [
     AppComponent,
     HomeComponent,
-    WebviewDirective
+    WebviewDirective,
+    HighchartsChartComponent,
   ],
   imports: [
     BrowserModule,
@@ -44,7 +49,7 @@ export function HttpLoaderFactory(http: HttpClient) {
       }
     })
   ],
-  providers: [ElectronService],
+  providers: [ElectronService, MysqlService, ApiService, ParamService],
   bootstrap: [AppComponent]
 })
 export class AppModule { }

@@ -1,5 +1,21 @@
-<div class="container">
-  <h1 class="title">
-    {{ 'PAGES.HOME.TITLE' | translate }}
-  </h1>
+<div style="width: 100%; height: 100%; display: flex; flex-direction: row;">
+  <div style="width:240px;overflow:auto;">
+    <div>
+      <input type="number" [(ngModel)]="bufferSize">
+    </div>
+    <div *ngFor="let pg of ps.paramGroups;">
+      <p>{{pg.name}}</p>
+      <ul>
+        <li *ngFor="let p of pg.params;">
+          {{p.name}}
+          <button *ngFor="let v of p.values;" (click)="showChart(pg, p, v)" [class.active]="currPg === pg && currParam === p && currValue === v">{{v}}</button>
+        </li>
+      </ul>
+    </div>
+  </div>
+  <div *ngIf="options" style="flex: 1;">
+    <highcharts-chart [Highcharts]="Highcharts" [constructorType]="'stockChart'" [options]="options" [callbackFunction]="hcCallback" [(update)]="updateDemo2" style="width: 100%; height: 100%; display: block;"></highcharts-chart>
+  </div>
 </div>
+
+<!-- <highcharts-chart *ngFor="let opt of allN1Options;" [Highcharts]="Highcharts" [constructorType]="'stockChart'" [options]="opt | async" style="width: 600px; height: 500px; display: inline-block;"></highcharts-chart> -->
