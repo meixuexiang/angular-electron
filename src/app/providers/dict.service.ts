@@ -20,12 +20,18 @@ import { Kjhm } from '../classes/interface';
 //   }
 
 // }
-
+const Digits = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11'];
+const ds = Date.now();
 
 export const Dict = {
-  _CCS: null,
-  digits: ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11'],
-  get CCS(): Kjhm[] {
-    return this._CCS || (this._CCS = Combinatorics.combination(this.digits, 5));
-  }
+  C1: Combinatorics.combination(Digits, 1).toArray(),
+  C2: Combinatorics.combination(Digits, 2).toArray(),
+  C3: Combinatorics.combination(Digits, 3).toArray(),
+  C4: Combinatorics.combination(Digits, 4).toArray(),
+  C5: Combinatorics.combination(Digits, 5).toArray(),
+  C6: Combinatorics.combination(Digits, 6).toArray(),
+  C7: Combinatorics.combination(Digits, 7).toArray(),
+  C8: Combinatorics.combination(Digits, 8).toArray(),
 };
+
+console.log(Date.now() - ds, Dict);

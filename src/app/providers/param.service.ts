@@ -11,32 +11,65 @@ export class ParamService {
 
   constructor() {
     this.paramGroups = [
+      ...[1, 2, 3, 4, 5, 6, 7, 8].map(n => {
+        const name = `C${n}`;
+        return new ParamGroup({
+          name,
+          getValFactory: () => {
+            return Dict[name].map((d: Kjhm) => {
+              const set = new Set(d);
+              const fn = ([k0, k1, k2, k3, k4]) => {
+                return +set.has(k0) + +set.has(k1) + +set.has(k2) + +set.has(k3) + +set.has(k4);
+              };
+              fn['pname'] = d.join('');
+              return fn;
+            });
+          }
+        });
+      }),
+
       new ParamGroup({
-        name: 'M1',
+        name: 'KD',
         getValFactory: () => {
-          return Dict.digits.map((d, i) => {
+          const fn = (kjhm: Kjhm) => {
+            const ar = kjhm.map(s => +s);
+            return Math.max(...ar) - Math.min(...ar) - 4;
+          };
+          fn['pname'] = 'kd';
+          return [fn];
+        }
+      }),
+
+      new ParamGroup({
+        name: 'BIN',
+        getValFactory: () => {
+          return [5, 6, 7, 8, 9, 10, 11].map(n => {
             const fn = (kjhm: Kjhm) => {
-              return kjhm[0] === d || kjhm[1] === d || kjhm[2] === d || kjhm[3] === d || kjhm[4] === d ? 1 : 0;
+              const set = new Set(kjhm.map(s => +s));
+              const ar = new Array(11).fill(0).map((_, i) => set.has(i + 1) ? 1 : 0);
+              return parseInt(ar.join(''), 2) % n;
             };
-            fn['pname'] = d;
+            fn['pname'] = 'bin';
             return fn;
           });
         }
       }),
 
       new ParamGroup({
-        name: 'D2',
+        name: 'HW',
         getValFactory: () => {
-          return Dict.CCS.map((d: Kjhm, i: number) => {
-            const set = new Set(d);
+          return [5, 6, 7, 8, 9, 10, 11].map(n => {
             const fn = (kjhm: Kjhm) => {
-              return +set.has(kjhm[0]) + +set.has(kjhm[1]) + +set.has(kjhm[2]) + +set.has(kjhm[3]) + +set.has(kjhm[4]);
+              const ar = kjhm.map(s => +s);
+              return kjhm.reduce((acc, s) => +s + acc, 0) % n;
             };
-            fn['pname'] = d.join('');
+            fn['pname'] = 'hw' + n;
             return fn;
           });
         }
       }),
+
+
 
     ];
   }

@@ -1,15 +1,12 @@
 import { Component, OnInit } from '@angular/core';
 
-import { of } from 'rxjs';
-import { catchError, map, tap, share, switchMap, reduce, scan, bufferCount, publishReplay, refCount } from 'rxjs/operators';
+import { map, publishReplay, refCount } from 'rxjs/operators';
 
-import * as Highcharts from 'highcharts/highstock';
-// import * as HC_map from 'highcharts/modules/map';
-// import * as HC_exporting from 'highcharts/modules/exporting';
-// import * as HC_ce from 'highcharts-custom-events';
-import * as HC_SMA from 'highcharts/indicators/indicators';
+import * as Highcharts from 'highcharts/highstock.src';
+import * as HC_SMA from 'highcharts/indicators/indicators.src';
+import * as HC_EMA from 'highcharts/indicators/ema.src';
 import * as HC_BB from 'highcharts/indicators/bollinger-bands';
-import * as HC_MACD from 'highcharts/indicators/macd';
+// import * as HC_MACD from 'highcharts/indicators/macd';
 import * as HC_theme from 'highcharts/themes/gray';
 // accumulation-distribution atr bollinger-bands cci cmf ema ichimoku-kinko-hyo indicators macd mfi momentum
 // pivot-points price-envelopes psar roc rsi stochastic volume-by-price vwap wma zigzag
@@ -24,14 +21,10 @@ import { ParamGroup } from '../../classes/param-group';
 import { Param } from '../../classes/param';
 import { Dict } from '../../providers/dict.service';
 
-// HC_map(Highcharts);
-// require('./worldmap')(Highcharts);
-
-// HC_exporting(Highcharts);
-// HC_ce(Highcharts);
 HC_SMA(Highcharts);
+HC_EMA(Highcharts);
 HC_BB(Highcharts);
-HC_MACD(Highcharts);
+// HC_MACD(Highcharts);
 HC_theme(Highcharts);
 
 Highcharts.setOptions({
@@ -41,6 +34,9 @@ Highcharts.setOptions({
     }
   }
 });
+
+console.log(Highcharts);
+
 
 @Component({
   selector: 'app-home',
@@ -55,6 +51,7 @@ export class HomeComponent implements OnInit {
   // starting values
   updateDemo2 = false;
   options = null;
+  issueCount = 880 * 3;
   bufferSize = 11;
 
   obsDraws: Observable<Draw[]>;
@@ -84,21 +81,20 @@ export class HomeComponent implements OnInit {
   getOption(pg: ParamGroup, p: Param, v: string) {
     let acc = 0;
     const num = p.valNumMap[v].length,
-      pos = Dict.CCS.length - num,
+      pos = Dict.C5.length - num,
       neg = -num;
     const uuid = `${pg.name}-${p.name}-${v}`;
 
     return this.obsDraws.pipe(
       map(draws => {
-        const ar = draws.map(draw => {
+        const ar = draws.slice(-Math.min(Math.max(this.issueCount, 0), draws.length)).map(draw => {
           const curr = p.getVal(draw.kjhm).toString();
           return acc += (curr === v ? pos : neg);
         });
         return new Array(Math.ceil(ar.length / this.bufferSize)).fill(0)
-          .map((_, i) => ar.slice(i * this.bufferSize, (i + 1) * this.bufferSize))
-          .map((buffer, i) => {
-            console.log(buffer);
-
+          .map((_, i) => ar.slice(i * this.bufferSize, (i + 1) * this.bufferSize + 1))
+          .map((buffer) => {
+            // console.log(buffer);
             return {
               open: buffer[0],
               high: Math.max(...buffer),
@@ -143,36 +139,19 @@ export class HomeComponent implements OnInit {
           data: data
         },
         {
-          type: 'sma',
+          type: 'ema',
+          name: 'EMA (7)',
           linkedTo: uuid,
-          zIndex: 1,
           params: {
-            period: 5
-          },
-          marker: {
-            enabled: false
-          }
-        }, {
-          type: 'sma',
-          linkedTo: uuid,
-          zIndex: 1,
-          params: {
-            period: 10
-          },
-          marker: {
-            enabled: false
-          }
-        }, {
-          type: 'sma',
-          linkedTo: uuid,
-          zIndex: 1,
-          params: {
-            period: 20
-          },
-          marker: {
-            enabled: false
+            period: 7
           }
         },
+        {
+          type: 'ema',
+          name: 'EMA (14)',
+          linkedTo: uuid
+        },
+
           // {
           //   type: 'bb',
           //   topLine: { // 上轨线
@@ -223,7 +202,8 @@ export class HomeComponent implements OnInit {
     this.currParam = p;
     this.currValue = v;
 
-    this.getOption(pg, p, v).subscribe(options => this.options = options);
+    this.getOption(pg, p, v).subscribe(options => console.log(this.options = options)
+    );
   }
 }
 

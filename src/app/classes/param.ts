@@ -30,7 +30,7 @@ export class Param {
   }
 
   init() {
-    Dict.CCS.forEach((kjhm: Kjhm) => {
+    Dict.C5.forEach((kjhm: Kjhm) => {
       const v = this.getVal(kjhm).toString();
       if (!this.valNumMap[v]) {
         this.valNumMap[v] = [];
