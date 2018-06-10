@@ -5,25 +5,18 @@ import { Dict } from '../providers/dict.service';
 export class Param {
   values: string[];
   valNumMap: { [key: string]: Kjhm[] } = {};
-  // dict: DictService;
 
   name: string;
   getVal: (kjhm: Kjhm) => number | string;
 
   constructor(options) {
-
-    // const injector = Injector.create({ providers: [{ provide: DictService, deps: [] }] });
-    // this.dict = injector.get(DictService);
-    // debugger;
-    // const injector = ReflectiveInjector.resolveAndCreate([DictService]);
-    // this.dict = injector.get(DictService);
-
-    if (typeof options === 'function') {
-      options = {
-        getVal: options
-      };
-    }
     options = options || {};
+    if (!options.getVal) {
+      throw new Error('Missing the method :  "getVal"');
+    }
+    if (!options.name) {
+      throw new Error('Missing the property :  "name"');
+    }
     this.getVal = options.getVal;
     this.name = options.name;
     this.init();

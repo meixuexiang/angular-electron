@@ -40,8 +40,6 @@ export class HighchartsChartComponent {
       );
       this.optionsValue.series = this.chart.userOptions.series;
     }
-    console.log(this.chart);
-
   };
 
 }

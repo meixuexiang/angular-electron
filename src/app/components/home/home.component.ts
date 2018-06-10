@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 
-import { map, publishReplay, refCount } from 'rxjs/operators';
+import { map, publishReplay, refCount, groupBy, flatMap, reduce, tap, switchMap } from 'rxjs/operators';
 
 import * as Highcharts from 'highcharts/highstock.src';
 import * as HC_SMA from 'highcharts/indicators/indicators.src';
@@ -16,7 +16,7 @@ import * as HC_theme from 'highcharts/themes/gray';
 import { ParamService } from '../../providers/param.service';
 import { ApiService } from '../../providers/api.service';
 import { Draw } from '../../classes/interface';
-import { Observable } from 'rxjs';
+import { Observable, of, from } from 'rxjs';
 import { ParamGroup } from '../../classes/param-group';
 import { Param } from '../../classes/param';
 import { Dict } from '../../providers/dict.service';
@@ -36,7 +36,7 @@ Highcharts.setOptions({
 });
 
 console.log(Highcharts);
-
+const emaGetValue = Highcharts.seriesTypes.ema.prototype.getValues;
 
 @Component({
   selector: 'app-home',
@@ -51,7 +51,7 @@ export class HomeComponent implements OnInit {
   // starting values
   updateDemo2 = false;
   options = null;
-  issueCount = 880 * 3;
+  issueCount = 880;
   bufferSize = 11;
 
   obsDraws: Observable<Draw[]>;
@@ -61,6 +61,8 @@ export class HomeComponent implements OnInit {
 
   allN1Options: Observable<any>[];
 
+  pvs: any;
+
 
   constructor(
     public ps: ParamService,
@@ -68,42 +70,32 @@ export class HomeComponent implements OnInit {
   ) {
     console.log(this.ps);
   }
-  hcCallback() {
-
-  }
 
   ngOnInit() {
     this.obsDraws = this.api.loadGD().pipe(publishReplay(1), refCount());
-    this.showChart(this.ps.paramGroups[0], this.ps.paramGroups[0].params[0], this.ps.paramGroups[0].params[0].values[0]);
+    // this.showChart(this.ps.paramGroups[0], this.ps.paramGroups[0].params[0], this.ps.paramGroups[0].params[0].values[0]);
     // this.allN1Options = this.ps.paramGroups[0].params.map(p => this.getOption(this.ps.paramGroups[0], p, '1'));
+    this.pvs = this.ps.cal(this.obsDraws, this.issueCount, this.bufferSize)
+      .pipe(
+        // groupBy(buffer => 1),
+        // flatMap(group$ => group$.pipe(reduce((acc, cur) => [...acc, cur], []))),
+        map((pvs: { pg: ParamGroup, p: Param, v: string, ks: number[][], ema: any, weight: number }[]) => pvs.sort((a, b) => a.weight < b.weight ? 1 : -1)),
+        tap(pvs => console.log('pvs', pvs)),
+      // switchMap(pvs => from(pvs)),
+      // tap(pv => console.log('pv', pv)),
+    );
+    // console.log('obs: ', this.pvs);
+    // this.pvs.subscribe(res => console.log('res', res));
+
+
+    // const arObsOHLC = this.ps.cal(this.obsDraws, this.issueCount, this.bufferSize);
+    // console.log(arObsOHLC);
+    // arObsOHLC[0].subscribe(res => console.log(res));
   }
 
-  getOption(pg: ParamGroup, p: Param, v: string) {
-    let acc = 0;
-    const num = p.valNumMap[v].length,
-      pos = Dict.C5.length - num,
-      neg = -num;
+  getOption({ pg, p, v, ks }) {
     const uuid = `${pg.name}-${p.name}-${v}`;
-
-    return this.obsDraws.pipe(
-      map(draws => {
-        const ar = draws.slice(-Math.min(Math.max(this.issueCount, 0), draws.length)).map(draw => {
-          const curr = p.getVal(draw.kjhm).toString();
-          return acc += (curr === v ? pos : neg);
-        });
-        return new Array(Math.ceil(ar.length / this.bufferSize)).fill(0)
-          .map((_, i) => ar.slice(i * this.bufferSize, (i + 1) * this.bufferSize + 1))
-          .map((buffer) => {
-            // console.log(buffer);
-            return {
-              open: buffer[0],
-              high: Math.max(...buffer),
-              low: Math.min(...buffer),
-              close: buffer[buffer.length - 1],
-              // dataLabels: draws[i * this.bufferSize].issue
-            };
-          });
-      }),
+    return of(ks).pipe(
       map(data => ({
         // title: { text: 'N1' },
         rangeSelector: {
@@ -120,6 +112,18 @@ export class HomeComponent implements OnInit {
           candlestick: {
             color: '#06A969',
             upColor: '#ED394D'
+          }
+        },
+        xAxis: {
+          dateTimeLabelFormats: {
+            millisecond: '%H:%M:%S.%L',
+            second: '%H:%M:%S',
+            minute: '%H:%M',
+            hour: '%H:%M',
+            day: '%m-%d',
+            week: '%m-%d',
+            month: '%y-%m',
+            year: '%Y'
           }
         },
         // yAxis: [{
@@ -143,13 +147,16 @@ export class HomeComponent implements OnInit {
           name: 'EMA (7)',
           linkedTo: uuid,
           params: {
-            period: 7
+            period: 5
           }
         },
         {
           type: 'ema',
           name: 'EMA (14)',
-          linkedTo: uuid
+          linkedTo: uuid,
+          params: {
+            period: 9
+          }
         },
 
           // {
@@ -197,13 +204,18 @@ export class HomeComponent implements OnInit {
     );
   }
 
-  showChart(pg: ParamGroup, p: Param, v: string) {
+  showChart({ pg, p, v, ks }) {
     this.currPg = pg;
     this.currParam = p;
     this.currValue = v;
+    console.log(ks);
 
-    this.getOption(pg, p, v).subscribe(options => console.log(this.options = options)
+    this.getOption({ pg, p, v, ks }).subscribe(options => console.log(this.options = options)
     );
+  }
+
+  hcCallback(chart) {
+
   }
 }
 
