@@ -1,4 +1,3 @@
-import { Injector } from '@angular/core';
 import { Kjhm } from './interface';
 import { Dict } from '../providers/dict.service';
 
@@ -7,7 +6,7 @@ export class Param {
   valNumMap: { [key: string]: Kjhm[] } = {};
 
   name: string;
-  getVal: (kjhm: Kjhm) => number | string;
+  getVal: (kjhm: Kjhm) => string;
 
   constructor(options) {
     options = options || {};

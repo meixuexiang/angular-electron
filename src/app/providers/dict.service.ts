@@ -21,7 +21,7 @@ import { Kjhm } from '../classes/interface';
 
 // }
 const Digits = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11'];
-const ds = Date.now();
+// const ds = Date.now();
 
 export const Dict = {
   C1: Combinatorics.combination(Digits, 1).toArray(),
@@ -34,4 +34,4 @@ export const Dict = {
   C8: Combinatorics.combination(Digits, 8).toArray(),
 };
 
-console.log(Date.now() - ds, Dict);
+// console.log(Date.now() - ds, Dict);

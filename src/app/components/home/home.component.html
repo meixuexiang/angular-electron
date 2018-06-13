@@ -8,6 +8,9 @@
       缓冲区大小：
       <input type="number" [(ngModel)]="bufferSize">
     </div>
+    <div>
+      <button (click)="startStatistic()">开始统计</button>
+    </div>
     <!-- <div *ngFor="let pg of ps.paramGroups;">
       <p>{{pg.name}}</p>
       <ul>
@@ -25,3 +28,5 @@
 </div>
 
 <!-- <highcharts-chart *ngFor="let opt of allN1Options;" [Highcharts]="Highcharts" [constructorType]="'stockChart'" [options]="opt | async" style="width: 600px; height: 500px; display: inline-block;"></highcharts-chart> -->
+
+<app-value-analysis [values]="str"></app-value-analysis>

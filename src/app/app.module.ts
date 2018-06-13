@@ -23,6 +23,7 @@ import { MysqlService } from './providers/mysql.service';
 import { ApiService } from './providers/api.service';
 import { HighchartsChartComponent } from './components/highcharts-chart/highcharts-chart.component';
 import { ParamService } from './providers/param.service';
+import { ValueAnalysisComponent } from './components/value-analysis/value-analysis.component';
 
 // AoT requires an exported function for factories
 export function HttpLoaderFactory(http: HttpClient) {
@@ -35,6 +36,7 @@ export function HttpLoaderFactory(http: HttpClient) {
     HomeComponent,
     WebviewDirective,
     HighchartsChartComponent,
+    ValueAnalysisComponent,
   ],
   imports: [
     BrowserModule,

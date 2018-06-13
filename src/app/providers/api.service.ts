@@ -15,7 +15,7 @@ export class ApiService {
   ) { }
 
   _load(tbName): Observable<{ issue: number; kjhm: Kjhm }[]> {
-    return this.http.get<{ issue: number; n1: string; n2: string; n3: string; n4: string; n5: string; }[]>(`${this.host}/${tbName}?sortby=Issue&order=desc&limit=11000`)
+    return this.http.get<{ issue: number; n1: string; n2: string; n3: string; n4: string; n5: string; }[]>(`${this.host}/${tbName}?sortby=Issue&order=desc&limit=60000`)
       .pipe(
         map(res => res.map(o => ({
           issue: o.issue,
