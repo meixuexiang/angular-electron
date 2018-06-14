@@ -15,7 +15,7 @@ import * as HC_theme from 'highcharts/themes/gray';
 
 import { ParamService } from '../../providers/param.service';
 import { ApiService } from '../../providers/api.service';
-import { Draw } from '../../classes/interface';
+import { Draw, Arg } from '../../classes/interface';
 import { Observable, of, from } from 'rxjs';
 import { ParamGroup } from '../../classes/param-group';
 import { Param } from '../../classes/param';
@@ -52,6 +52,7 @@ export class HomeComponent implements OnInit {
   options = null;
   issueCount = 880;
   bufferSize = 11;
+  offset = 100;
 
   obsDraws: Observable<Draw[]>;
   currPg: ParamGroup;
@@ -62,6 +63,8 @@ export class HomeComponent implements OnInit {
 
   pvs: any;
   testResult: any;
+
+  lastTenKjhm: Observable<Draw[]>;
 
   str = '';
 
@@ -78,9 +81,8 @@ export class HomeComponent implements OnInit {
       publishReplay(1),
       refCount()
     );
-    // this.pvs =
-    // this.ps.cal(this.obsDraws.pipe(map((draws: Draw[]) => draws.slice(-this.issueCount - 3))), this.issueCount, this.bufferSize)
-    //   .subscribe();
+
+    this.updateOffset(this.offset);
 
     // this.showChart(this.ps.paramGroups[0], this.ps.paramGroups[0].params[0], this.ps.paramGroups[0].params[0].values[0]);
     // this.allN1Options = this.ps.paramGroups[0].params.map(p => this.getOption(this.ps.paramGroups[0], p, '1'));
@@ -90,6 +92,20 @@ export class HomeComponent implements OnInit {
     // console.log(arObsOHLC);
     // arObsOHLC[0].subscribe(res => console.log(res));
 
+  }
+
+  updateOffset(offset) {
+    const obs = this.obsDraws.pipe(
+      map((draws: Draw[]) => draws.slice(-this.issueCount - 11 - offset, -11 - offset).concat({ issue: 0, kjhm: ['', '', '', '', ''] }))
+    );
+    this.lastTenKjhm = this.obsDraws.pipe(
+      map((draws: Draw[]) => draws.slice(-11 - offset, Math.min(- offset + 11, -1)))
+    );
+    this.ps.cal(obs, this.issueCount, this.bufferSize)
+      .subscribe(({ pvs }) => {
+        this.pvs = pvs;
+        this.showChart(pvs[0]);
+      });
   }
 
   startStatistic() {
@@ -111,8 +127,9 @@ export class HomeComponent implements OnInit {
 
   start() {
     // const testIssue = 3;
-    const testIssue = 10;
+    const testIssue = 1000;
     // const testIssue = 3000;
+    // const testIssue = 9000;
     const obs = this.obsDraws.pipe(map((draws: Draw[]) => draws.slice(-(this.issueCount + testIssue))));
     return this.ps.cal(obs, this.issueCount, this.bufferSize).pipe(
       mergeMap(({ pvs }) => {
@@ -129,61 +146,6 @@ export class HomeComponent implements OnInit {
         return of(idx);
       }, (param, winIndex) => ({ ...param, winIndex })),
     );
-
-    // // const testIssue = 300;
-    // const testIssue = 3000;
-    // // const testIssue = 2;
-    // let startIndex = 0;
-    // let index = 0, arDraws;
-    // return this.obsDraws.pipe(
-    //   switchMap((draws: Draw[]) => {
-    //     startIndex = Math.max(0, draws.length - testIssue - 1);
-    //     // console.log('draws draws.length startIndex', draws, draws.length, startIndex);
-    //     return from(arDraws = draws);
-    //   }),
-    //   tap(draw => index += 1),
-    //   filter(() => index >= startIndex && index < arDraws.length - 1),
-    //   mergeMap(() => this.ps.cal(of(arDraws.slice(index - this.issueCount, index)), this.issueCount, this.bufferSize)),
-    //   map((pvs: { [propName: string]: any; }[]) => {
-    //     const follow10 = arDraws.slice(index, index + 11);
-    //     return pvs.map(({ pg, p, v, vs, ks, ema, weight }) => {
-    //       const profit = follow10.map((draw: Draw) => p.getVal(draw.kjhm) === v ? 1 : 0);
-    //       return {
-    //         pg, p, v, vs, ks, ema, weight,
-    //         profit,
-    //         name: [pg.name, p.name, v].join('-'),
-    //         num: p.valNumMap[v].length,
-    //         theory: p.valNumMap[v].length / 462,
-    //         actual: profit.filter(n => n === 1).length / profit.length
-    //       };
-    //     });
-    //   }),
-    //   tap((pvs: { [propName: string]: any; }[]) => {
-    //     const result = pvs.map(({ name, num, theory, actual, profit }, i) => `${name.padStart(i < 10 ? 17 : 16, ' ')}, ${(num).toString().padStart(3, ' ')}注, 理论: ${theory.toFixed(2)}, 实际: ${actual.toFixed(2)}, ${profit}`);
-    //     // console.log(result);
-    //   }),
-    //   tap((pvs: { [propName: string]: any; }[]) => {
-    //     const gt = pvs.filter(({ theory, actual }) => actual > theory).length,
-    //       eq = pvs.filter(({ theory, actual }) => actual === theory).length,
-    //       lt = pvs.filter(({ theory, actual }) => actual < theory).length;
-    //     // console.log(({ gt, eq, lt }));
-    //   }),
-    //   mergeMap((pvs: { [propName: string]: any; }[]) => {
-    //     const t = new Tolerant();
-    //     pvs.forEach(({ p, v }) => {
-    //       t.add(p.valNumMap[v]);
-    //     });
-    //     const result = t.genResult(), sizes = result.map(ar => ar.length);
-    //     return of({ result, sizes });
-    //   }
-    //     // , (pvs, { result, sizes }) => ({ pvs, result, sizes })
-    //   ),
-    //   mergeMap(({ result }) => {
-    //     const s = new Set(arDraws[index].kjhm);
-    //     const idx = result.findIndex(ar => !!ar.find(hm => s.has(hm[0]) && s.has(hm[1]) && s.has(hm[2]) && s.has(hm[3]) && s.has(hm[4])));
-    //     return of(idx);
-    //   }, (param, winIndex) => ({ ...param, winIndex })),
-    // );
   }
 
   getOption({ pg, p, v, ks }) {
@@ -251,6 +213,14 @@ export class HomeComponent implements OnInit {
             period: 9
           }
         },
+        {
+          type: 'ema',
+          name: 'EMA (13)',
+          linkedTo: uuid,
+          params: {
+            period: 13
+          }
+        },
 
           // {
           //   type: 'bb',
@@ -297,7 +267,7 @@ export class HomeComponent implements OnInit {
     );
   }
 
-  showChart({ pg, p, v, ks }) {
+  showChart({ pg, p, v, ks }: Arg) {
     this.currPg = pg;
     this.currParam = p;
     this.currValue = v;
