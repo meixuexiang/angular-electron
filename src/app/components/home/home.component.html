@@ -13,7 +13,8 @@
       <input type="number" [value]="offset" (input)="updateOffset($event.target.value)">
     </div>
     <div>
-      <button (click)="startStatistic()">开始统计</button>
+      <button (click)="startTolerant()">开始统计</button>
+      <button (click)="countLoss()">统计遗漏</button>
     </div>
     <!-- <div *ngFor="let pg of ps.paramGroups;">
       <p>{{pg.name}}</p>

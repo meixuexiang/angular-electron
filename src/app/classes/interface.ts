@@ -12,7 +12,9 @@ export interface Arg {
   pg?: ParamGroup;
   p?: Param;
   v?: string;
+  vs?: { issue: number; value: string; money: number; }[];
   ks?: number[][];
-  ims?: { issue: number, money: number }[];
   weight?: number;
+  delta?: number[];
+  distance?: number;
 }

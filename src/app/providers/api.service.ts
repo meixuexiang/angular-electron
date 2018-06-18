@@ -9,13 +9,13 @@ import { Draw, Kjhm } from '../classes/interface';
 })
 export class ApiService {
 
-  host = 'http://192.168.1.4:8080/v1';
+  host = 'http://lot.brix.net/v1';
   constructor(
     private http: HttpClient
   ) { }
 
   _load(tbName): Observable<{ issue: number; kjhm: Kjhm }[]> {
-    return this.http.get<{ issue: number; n1: string; n2: string; n3: string; n4: string; n5: string; }[]>(`${this.host}/${tbName}?sortby=Issue&order=desc&limit=60000`)
+    return this.http.get<{ issue: number; n1: string; n2: string; n3: string; n4: string; n5: string; }[]>(`${this.host}/${tbName}?sortby=Issue&order=desc&limit=150000`)
       .pipe(
         map(res => res.map(o => ({
           issue: o.issue,

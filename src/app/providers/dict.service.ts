@@ -1,6 +1,5 @@
-import { Injectable } from '@angular/core';
 import * as Combinatorics from 'js-combinatorics';
-import { Kjhm } from '../classes/interface';
+// import * as _ from 'lodash';
 
 // @Injectable({
 //   providedIn: 'root'
@@ -21,7 +20,6 @@ import { Kjhm } from '../classes/interface';
 
 // }
 const Digits = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11'];
-// const ds = Date.now();
 
 export const Dict = {
   C1: Combinatorics.combination(Digits, 1).toArray(),
@@ -34,4 +32,24 @@ export const Dict = {
   C8: Combinatorics.combination(Digits, 8).toArray(),
 };
 
-// console.log(Date.now() - ds, Dict);
+// const els = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
+// const ar = Combinatorics.baseN(els, 5).toArray();
+// const arr = ar.map(a => [_.sumBy(a, function (o) { return o[0]; }), _.sumBy(a, function (o) { return o[1]; }), _.sumBy(a, function (o) { return o[2]; })].join(''));
+
+// const d = Date.now();
+// const ds = '0123456789'.split(''), s = new Set(ds);
+// const r4 = Combinatorics.combination(ds, 4).toArray();
+// const C443 = [].concat(...r4.map(r => {
+//   const others = ds.filter(n => !r.includes(n));
+//   let C63 = Combinatorics.combination(others, 3).toArray();
+//   let N63 = C63.map(m => others.filter(n => !m.includes(n)));
+//   C63 = C63.map(a => a.join(''));
+//   N63 = N63.map(a => a.join(''));
+//   const C63Keys = C63.map((n, i) => (C63[i] < N63[i] ? [C63[i], N63[i]] : [N63[i], C63[i]]).join('-'));
+//   const C63UniqKeys = Array.from(new Set(C63Keys));
+//   return C63UniqKeys.map(key => `${r.join('')}-${key}`);
+// }));
+// console.log(Date.now() - d);
+// console.log(
+//   C443
+// );

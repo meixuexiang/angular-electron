@@ -20,6 +20,8 @@ import { Observable, of, from } from 'rxjs';
 import { ParamGroup } from '../../classes/param-group';
 import { Param } from '../../classes/param';
 import { Tolerant } from '../../classes/tolerant';
+import { PlayerService } from '../../providers/player.service';
+import { ElectronService } from '../../providers/electron.service';
 
 HC_SMA(Highcharts);
 HC_EMA(Highcharts);
@@ -69,83 +71,97 @@ export class HomeComponent implements OnInit {
   str = '';
 
   constructor(
+    private es: ElectronService,
     public ps: ParamService,
-    private api: ApiService
+    private api: ApiService,
+    private player: PlayerService
   ) {
     // console.log(this.ps);
+    if (this.es.isElectron()) {
+      this.enableSubThread();
+    }
+  }
+
+  enableSubThread() {
+    const { BrowserWindow } = this.es.remote;
+    const ipcRenderer = this.es.ipcRenderer;
+    ipcRenderer.on('cal-cal', (event, args, channel, fromWindowId) => {
+      const [draws, issueCount, bufferSize] = args;
+      this.player.tolerant(of(draws), issueCount, bufferSize).subscribe(res => {
+        const fromWindow = BrowserWindow.fromId(fromWindowId);
+        fromWindow.webContents.send(channel, res);
+      }, err => console.error(err), () => {
+        ipcRenderer.removeAllListeners('cal-cal');
+        const fromWindow = BrowserWindow.fromId(fromWindowId);
+        // fromWindow.webContents.send(channel, false);
+        window.close();
+      });
+    });
   }
 
   ngOnInit() {
     this.obsDraws = this.api.loadGD().pipe(
-      // map((draws: Draw[]) => draws.slice(0, -3000 * 14)),
+      map((draws: Draw[]) => draws.slice(0, -56000)),
       publishReplay(1),
       refCount()
     );
 
-    this.updateOffset(this.offset);
+    // this.updateOffset(this.offset);
+  }
 
-    // this.showChart(this.ps.paramGroups[0], this.ps.paramGroups[0].params[0], this.ps.paramGroups[0].params[0].values[0]);
-    // this.allN1Options = this.ps.paramGroups[0].params.map(p => this.getOption(this.ps.paramGroups[0], p, '1'));
-    // console.log('obs: ', this.pvs);
-    // this.pvs.subscribe(res => console.log('res', res));
-    // const arObsOHLC = this.ps.cal(this.obsDraws, this.issueCount, this.bufferSize);
-    // console.log(arObsOHLC);
-    // arObsOHLC[0].subscribe(res => console.log(res));
+  countLoss() {
+    console['time']('countLoss');
+    // const testIssue = 600;
+    const testIssue = 2000;
+    const obs = this.obsDraws.pipe(map((draws: Draw[]) => draws.slice(-(this.issueCount + testIssue))));
 
+    this.player.cal(obs, this.issueCount, this.bufferSize).pipe(
+      map(({ pvs }) => pvs.map(({ pg, p, v, ks, distance, weight }, col) => ({ total: p.valNumMap[v].length, distance, col, v, weight, pg, p, ks: ks.slice() }))),
+      tap((...args) => console.log(4444, ...args[0].filter(o => o.distance > 11))),
+      groupBy((buffer: any) => 1),
+      mergeMap(group$ => group$.pipe(reduce((acc, cur) => [...acc, cur], []))),
+    )
+      .subscribe((results) => {
+        const pvs = results.reduceRight((acc, rs, i, that) => {
+          const pre = that[i - 1] || [];
+          return acc.concat(rs.filter(r => !pre.find(o => o.p.name === r.p.name && o.v === r.v && o.distance === r.distance + 1)));
+        }, [])
+          .filter(o => o.distance > 11)
+          .sort((a, b) => b.distance - a.distance);
+        console.log(JSON.stringify(pvs.map(({ total, distance, col, v }) => ({ total, distance, col, v }))));
+        this.pvs = pvs;
+        this.showChart(pvs[0]);
+      }, (err) => { console.error(err); }, () => console['timeEnd']('countLoss'));
   }
 
   updateOffset(offset) {
     const obs = this.obsDraws.pipe(
-      map((draws: Draw[]) => draws.slice(-this.issueCount - 11 - offset, -11 - offset).concat({ issue: 0, kjhm: ['', '', '', '', ''] }))
+      map((draws: Draw[]) => draws.slice(-this.issueCount - 11 - offset, -11 - offset))
     );
     this.lastTenKjhm = this.obsDraws.pipe(
       map((draws: Draw[]) => draws.slice(-11 - offset, Math.min(- offset + 11, -1)))
     );
-    this.ps.cal(obs, this.issueCount, this.bufferSize)
+    this.player.cal(obs, this.issueCount, this.bufferSize)
       .subscribe(({ pvs }) => {
         this.pvs = pvs;
         this.showChart(pvs[0]);
       });
   }
 
-  startStatistic() {
-    console['time']('start');
-    this.testResult = this.start()
-      .pipe(
-        tap(({ pvs, result, sizes, winIndex }) => {
-          const output = sizes.map((n, i) => n.toString().padStart(3, ' ')).join(',');
-          console.log(winIndex.toString().padStart(2, ' '), ': ', output);
-        }),
-        groupBy((buffer: any) => 1),
-        mergeMap(group$ => group$.pipe(reduce((acc, cur) => [...acc, cur], []))),
-    )
-      .subscribe((results) => {
-        console.log(results);
-        this.str = results.map(r => r.winIndex).join(',');
-      }, (err) => { console.error(err); }, () => console['timeEnd']('start'));
-  }
-
-  start() {
-    // const testIssue = 3;
-    const testIssue = 1000;
-    // const testIssue = 3000;
-    // const testIssue = 9000;
+  startTolerant() {
+    console['time']('startTolerant');
+    const testIssue = (this.player.cpus.length - 1) * 8000;
     const obs = this.obsDraws.pipe(map((draws: Draw[]) => draws.slice(-(this.issueCount + testIssue))));
-    return this.ps.cal(obs, this.issueCount, this.bufferSize).pipe(
-      mergeMap(({ pvs }) => {
-        const t = new Tolerant();
-        pvs.forEach(({ p, v }) => t.add(p.valNumMap[v]));
-        const result = t.genResult(), sizes = result.map(ar => ar.length);
-        return of({ result, sizes });
-      }
-        , (param, { result, sizes }) => ({ ...param, result, sizes })
-      ),
-      mergeMap(({ result, draw }) => {
-        const s = new Set(draw.kjhm);
-        const idx = result.findIndex(ar => !!ar.find(hm => s.has(hm[0]) && s.has(hm[1]) && s.has(hm[2]) && s.has(hm[3]) && s.has(hm[4])));
-        return of(idx);
-      }, (param, winIndex) => ({ ...param, winIndex })),
-    );
+    this.testResult = this.player.job(obs, this.issueCount, this.bufferSize)
+      .pipe(
+        groupBy((buffer: any) => 1),
+        mergeMap(group$ => group$.pipe(reduce((acc, cur) => [...acc, cur], [])))
+      )
+      .subscribe((res) => {
+        const results = [].concat(...res);
+        console.log(...results);
+        this.str = results.map(r => r.winIndex).join(',');
+      }, (err) => { console.error(err); }, () => console['timeEnd']('startTolerant'));
   }
 
   getOption({ pg, p, v, ks }) {
@@ -213,15 +229,6 @@ export class HomeComponent implements OnInit {
             period: 9
           }
         },
-        {
-          type: 'ema',
-          name: 'EMA (13)',
-          linkedTo: uuid,
-          params: {
-            period: 13
-          }
-        },
-
           // {
           //   type: 'bb',
           //   topLine: { // 上轨线
@@ -273,7 +280,8 @@ export class HomeComponent implements OnInit {
     this.currValue = v;
     // console.log(ks);
 
-    this.getOption({ pg, p, v, ks }).subscribe(options => console.log(this.options = options)
+    this.getOption({ pg, p, v, ks }).subscribe(
+      options => console.log(this.options = options)
     );
   }
 
