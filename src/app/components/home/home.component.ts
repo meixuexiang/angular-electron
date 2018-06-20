@@ -1,11 +1,11 @@
 import { Component, OnInit } from '@angular/core';
 
-import { map, publishReplay, refCount, tap, switchMap, filter, mergeMap, groupBy, reduce } from 'rxjs/operators';
+import { map, publishReplay, refCount, mergeMap, groupBy, reduce } from 'rxjs/operators';
 
 import * as Highcharts from 'highcharts/highstock.src';
 import * as HC_SMA from 'highcharts/indicators/indicators.src';
 import * as HC_EMA from 'highcharts/indicators/ema.src';
-import * as HC_BB from 'highcharts/indicators/bollinger-bands';
+// import * as HC_BB from 'highcharts/indicators/bollinger-bands';
 // import * as HC_MACD from 'highcharts/indicators/macd';
 import * as HC_theme from 'highcharts/themes/gray';
 // accumulation-distribution atr bollinger-bands cci cmf ema ichimoku-kinko-hyo indicators macd mfi momentum
@@ -13,20 +13,21 @@ import * as HC_theme from 'highcharts/themes/gray';
 
 // avocado gray skies dark-unica sand-signika dark-green grid dark-blue grid-light sunset
 
-import { ParamService } from '../../providers/param.service';
 import { ApiService } from '../../providers/api.service';
-import { Draw, Arg } from '../../classes/interface';
-import { Observable, of, from } from 'rxjs';
+import { Draw, Arg, Kjhm } from '../../classes/interface';
+import { Observable, of } from 'rxjs';
 import { ParamGroup } from '../../classes/param-group';
 import { Param } from '../../classes/param';
-import { Tolerant } from '../../classes/tolerant';
 import { PlayerService } from '../../providers/player.service';
 import { ElectronService } from '../../providers/electron.service';
+import { Dict } from '../../providers/dict.service';
+import * as Combinatorics from 'js-combinatorics';
+import { VerificationService } from '../../providers/verification.service';
+const _ = require('lodash');
 
 HC_SMA(Highcharts);
 HC_EMA(Highcharts);
-HC_BB(Highcharts);
-// HC_MACD(Highcharts);
+// HC_BB(Highcharts);
 HC_theme(Highcharts);
 
 Highcharts.setOptions({
@@ -36,8 +37,6 @@ Highcharts.setOptions({
     }
   }
 });
-
-// console.log(Highcharts);
 
 @Component({
   selector: 'app-home',
@@ -52,9 +51,10 @@ export class HomeComponent implements OnInit {
   // starting values
   updateDemo2 = false;
   options = null;
-  issueCount = 880;
-  bufferSize = 11;
   offset = 100;
+  toleTimes = 100;
+  lossTimes = 100;
+  simTimes = 100;
 
   obsDraws: Observable<Draw[]>;
   currPg: ParamGroup;
@@ -72,9 +72,9 @@ export class HomeComponent implements OnInit {
 
   constructor(
     private es: ElectronService,
-    public ps: ParamService,
     private api: ApiService,
-    private player: PlayerService
+    private vs: VerificationService,
+    public player: PlayerService
   ) {
     // console.log(this.ps);
     if (this.es.isElectron()) {
@@ -85,9 +85,9 @@ export class HomeComponent implements OnInit {
   enableSubThread() {
     const { BrowserWindow } = this.es.remote;
     const ipcRenderer = this.es.ipcRenderer;
-    ipcRenderer.on('cal-cal', (event, args, channel, fromWindowId) => {
-      const [draws, issueCount, bufferSize] = args;
-      this.player.tolerant(of(draws), issueCount, bufferSize).subscribe(res => {
+    ipcRenderer.on('cal-cal', (event, methodName, args, channel, fromWindowId) => {
+      const [draws, issueNumber] = args;
+      this.player[methodName](of(draws), issueNumber).subscribe(res => {
         const fromWindow = BrowserWindow.fromId(fromWindowId);
         fromWindow.webContents.send(channel, res);
       }, err => console.error(err), () => {
@@ -101,47 +101,30 @@ export class HomeComponent implements OnInit {
 
   ngOnInit() {
     this.obsDraws = this.api.loadGD().pipe(
-      map((draws: Draw[]) => draws.slice(0, -56000)),
+      // map((draws: Draw[]) => draws.slice(0, -56000)),
       publishReplay(1),
       refCount()
     );
-
-    // this.updateOffset(this.offset);
   }
 
-  countLoss() {
-    console['time']('countLoss');
-    // const testIssue = 600;
-    const testIssue = 2000;
-    const obs = this.obsDraws.pipe(map((draws: Draw[]) => draws.slice(-(this.issueCount + testIssue))));
-
-    this.player.cal(obs, this.issueCount, this.bufferSize).pipe(
-      map(({ pvs }) => pvs.map(({ pg, p, v, ks, distance, weight }, col) => ({ total: p.valNumMap[v].length, distance, col, v, weight, pg, p, ks: ks.slice() }))),
-      tap((...args) => console.log(4444, ...args[0].filter(o => o.distance > 11))),
-      groupBy((buffer: any) => 1),
-      mergeMap(group$ => group$.pipe(reduce((acc, cur) => [...acc, cur], []))),
-    )
-      .subscribe((results) => {
-        const pvs = results.reduceRight((acc, rs, i, that) => {
-          const pre = that[i - 1] || [];
-          return acc.concat(rs.filter(r => !pre.find(o => o.p.name === r.p.name && o.v === r.v && o.distance === r.distance + 1)));
-        }, [])
-          .filter(o => o.distance > 11)
-          .sort((a, b) => b.distance - a.distance);
-        console.log(JSON.stringify(pvs.map(({ total, distance, col, v }) => ({ total, distance, col, v }))));
-        this.pvs = pvs;
-        this.showChart(pvs[0]);
-      }, (err) => { console.error(err); }, () => console['timeEnd']('countLoss'));
+  simulate() {
+    this.vs.start(this.obsDraws, this.simTimes).subscribe((arg) => {
+      this.player.log(arg);
+    }, err => {
+      console.error(err);
+    }, () => {
+      this.player.report();
+    });
   }
 
-  updateOffset(offset) {
+  updateOffset() {
     const obs = this.obsDraws.pipe(
-      map((draws: Draw[]) => draws.slice(-this.issueCount - 11 - offset, -11 - offset))
+      map((draws: Draw[]) => draws.slice(-this.player.issueCount - 11 - this.offset, -11 - this.offset))
     );
     this.lastTenKjhm = this.obsDraws.pipe(
-      map((draws: Draw[]) => draws.slice(-11 - offset, Math.min(- offset + 11, -1)))
+      map((draws: Draw[]) => draws.slice(-11 - this.offset, Math.min(- this.offset + 11, -1)))
     );
-    this.player.cal(obs, this.issueCount, this.bufferSize)
+    this.player.cal(obs, 0)
       .subscribe(({ pvs }) => {
         this.pvs = pvs;
         this.showChart(pvs[0]);
@@ -150,9 +133,8 @@ export class HomeComponent implements OnInit {
 
   startTolerant() {
     console['time']('startTolerant');
-    const testIssue = (this.player.cpus.length - 1) * 8000;
-    const obs = this.obsDraws.pipe(map((draws: Draw[]) => draws.slice(-(this.issueCount + testIssue))));
-    this.testResult = this.player.job(obs, this.issueCount, this.bufferSize)
+    const testIssue = this.player.getThreadsNumber() * this.toleTimes;
+    this.testResult = this.player.job('tolerant', this.obsDraws, testIssue)
       .pipe(
         groupBy((buffer: any) => 1),
         mergeMap(group$ => group$.pipe(reduce((acc, cur) => [...acc, cur], [])))
@@ -162,6 +144,20 @@ export class HomeComponent implements OnInit {
         console.log(...results);
         this.str = results.map(r => r.winIndex).join(',');
       }, (err) => { console.error(err); }, () => console['timeEnd']('startTolerant'));
+  }
+
+  countLoss() {
+    console['time']('countLoss');
+    const testIssue = this.player.getThreadsNumber() * this.lossTimes;
+    this.player.job('loss', this.obsDraws, testIssue).pipe(
+      groupBy((buffer: any) => 1),
+      mergeMap(group$ => group$.pipe(reduce((acc, cur) => [...acc, cur], []))),
+    )
+      .subscribe((res) => {
+        console.log([].concat(...[].concat(...res)));
+        const results = [].concat(...[].concat(...res)).filter(o => o.distance > -1).sort((a, b) => b.distance - a.distance);
+        console.log(results, _.countBy(results, _.property('distance')));
+      }, (err) => { console.error(err); }, () => console['timeEnd']('countLoss'));
   }
 
   getOption({ pg, p, v, ks }) {
@@ -288,5 +284,75 @@ export class HomeComponent implements OnInit {
   hcCallback() {
 
   }
+
+  find() {
+    const obs = this.obsDraws.pipe(
+      map((draws: Draw[]) => draws.slice(-40000).map(draw => draw.kjhm.sort(numberASCSortOperator).join('')))
+    );
+    obs.subscribe(draws => {
+      const CCS = Dict.C5.map((kjhm: Kjhm) => kjhm.join(''));
+      // console.log(draws);
+
+      // console.log(Dict.C5, CCS);
+
+      // const arVector = CCS.map(m => draws.map((n, j) => n === m ? j : 0).filter(n => n).map((n, j, arr) => n - (arr[j - 1] || 0)));
+
+      // const arVariance = arVector.map(v => jStat.variance(v));
+
+      // console.log(arVector, arVariance);
+
+      const chunkDraws = _.chunk(draws, 5);
+      if (chunkDraws[chunkDraws.length - 1].length < 5) {
+        chunkDraws.pop();
+      }
+
+      const gDraws = Combinatorics.cartesianProduct(...chunkDraws);
+
+      // console.log(chunkDraws, gDraws);
+      let count = 0;
+      let n;
+      let min = 462;
+
+      while ((n = gDraws.next()) && count < 180000) {
+        const drawSet = new Set(n);
+        if (drawSet.size < min) {
+          min = drawSet.size;
+          console.log(Array.from(drawSet));
+        }
+        count++;
+      }
+      console.log(`Done!`);
+
+      // do {
+      //   n = gDraws.next();
+      //   console.log(n);
+
+      //   const drawSet = new Set(n.values);
+      //   console.log(n.values, Array.from(drawSet));
+      //   count++;
+      // } while (n.done === false && count < 100);
+
+      // for (const draw of gDraws) {
+      //   const drawSet = new Set(draw);
+      //   console.log(draw, Array.from(drawSet));
+      //   count++;
+      //   if (count > 100) { break; }
+      // }
+
+      // const s = Date.now();
+      // console.log(
+      //   Combinatorics.cartesianProduct(..._.chunk(new Array(30).fill(0), 5)),
+      //   Date.now() - s
+      // );
+
+
+
+    });
+
+  }
 }
 
+
+function numberASCSortOperator(a, b) {
+  return a - b;
+}
