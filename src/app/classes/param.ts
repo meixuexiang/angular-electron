@@ -33,3 +33,17 @@ export class Param {
   }
 
 }
+
+/*
+数学期望,方差,标准差,协方差
+四分位差 (quartile deviation)
+极差 Range
+方差：方差（variance)
+标准差 (Standard Deviation)
+离散系数：离散系数又称变异系数，CV(Coefficient of Variance)表示
+偏度与峰度的度量：
+偏态系数：偏度(Skewness)亦称偏态
+峰态系数：（Kurtosis)
+
+
+*/

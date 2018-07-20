@@ -9,6 +9,9 @@ import { Dict } from './dict.service';
 import { ElectronService } from './electron.service';
 import { Tolerant } from '../classes/tolerant';
 import { Order } from '../classes/order';
+import * as jStat from 'jStat';
+console.log(jStat);
+
 
 @Injectable({
   providedIn: 'root'
@@ -22,9 +25,11 @@ export class PlayerService {
   issueCount = 880;
   bufferSize = 11;
 
+  issues = 20;
   odds = 0.90;
-  rebate = 0.025;
-  price = 0.1;
+  rebate = 0;
+  price = 0.01;
+  bonus = 462 * this.odds * this.price;
 
   balance: number;
   orderMap: { [label: string]: Order[] };
@@ -84,9 +89,8 @@ export class PlayerService {
             .map(({ p, v }) => {
               const mode = 'until',
                 numbers = p.valNumMap[v],
-                issues = 18,
                 rate = 0.1,
-                plan = this.makePlan(0, p.valNumMap[v].length, issues, this.price, 43.89, 200000, 1, new Array(issues).fill(rate), 0);
+                plan = this.makePlan(0, p.valNumMap[v].length, this.issues, this.price, this.bonus, 200000, 1, new Array(this.issues).fill(rate), this.rebate);
               // 0期数,1订单数,2单价,3倍数,4本期投入,5累计投入,6本期收益 ,7累计收益 ,8收益率%
               if (this.balance >= plan[0][4]) {
                 const order = new Order({ mode, numbers, plan, p, v });
@@ -221,7 +225,8 @@ export class PlayerService {
           const loss = this.calLoss(pv.vs, pv.v);
           // pv.weight = this.weight(pv.ks, loss);
           // pv.weight = this.weight1(pv.ks, loss);
-          pv.weight = this.weight2(pv.ks, loss);
+          // pv.weight = this.weight2(pv.ks, loss);
+          pv.weight = this.weight3(pv.ks, loss);
           if (draw.issue !== -1) {
             const { p, v, delta } = pv;
             const issue = this.issueToDate(draw.issue), value = pv.p.getVal(draw.kjhm), money = pv.vs[pv.vs.length - 1].money + delta[+(value !== v)];
@@ -240,7 +245,7 @@ export class PlayerService {
           }
         });
         pvs = pvs.sort((a, b) => a.weight < b.weight ? 1 : -1);
-        pvs = pvs.slice(0, 1);
+        pvs = pvs.slice(0, 3);
         const futureDraws = draws.slice(i + this.issueCount);
         pvs.forEach(pv => {
           pv.distance = pv.p.getVal(draws[i + this.issueCount - 1].kjhm) === pv.v ? futureDraws.findIndex(o => pv.p.getVal(o.kjhm) === pv.v) : -1;
@@ -318,6 +323,11 @@ export class PlayerService {
     } else {
       return 0;
     }
+  }
+
+  // 方差
+  weight3(ks: number[][], loss?: number) {
+    return jStat.variance(ks.map(ar => ar[ar.length - 1]));
   }
 
   calLoss(vs: { issue: number; value: string; }[], v: string) {

@@ -53,3 +53,39 @@ export const Dict = {
 // console.log(
 //   C443
 // );
+
+
+
+
+
+
+
+
+// function weight(ar, n) {
+//   return ar.reduce((acc, v) => acc += (v === '1' ? 100000 - n : -n), 0);
+// }
+
+// function audition(arParams) {
+//   const ar = arParams.reduce((acc, { vn, str }, i) => {
+//     const keys = Object.keys(vn), values = str.split('');
+//     return acc.concat(...Combinatorics.power(keys).toArray().map(vs => {
+//       if (vs.length === 0 || vs.length === keys.length) { return []; }
+//       const ns = [].concat(...vs.map(v => vn[v])), vsSet = new Set(vs);
+//       const ar01 = values.map(v => vsSet.has(v) ? '1' : '0');
+//       const w = weight(ar01, ns.length);
+//       return [{ vs, ns, w }];
+//     }));
+//   }, []);
+//   return ar.sort((a, b) => b.w - a.w);
+// }
+
+// const arr = [
+//   { vn: { 0: new Array(10000), 1: new Array(20000), 2: new Array(30000), 3: new Array(40000) }, str: '210320321031031022012013212131310320132210320321031031022012013212131310320132' },
+//   { vn: { 0: new Array(20000), 1: new Array(20000), 2: new Array(20000), 3: new Array(40000) }, str: '210320321031031022012013212131310320132210320321031031022012013212131310320132' },
+//   { vn: { 0: new Array(40000), 1: new Array(10000), 2: new Array(10000), 3: new Array(40000) }, str: '210320321031031022012013212131310320132210320321031031022012013212131310320132' },
+//   { vn: { 0: new Array(25000), 1: new Array(25000), 2: new Array(25000), 3: new Array(25000) }, str: '210320321031031022012013212131310320132210320321031031022012013212131310320132' },
+// ];
+
+// console.log(
+//   audition(arr)
+// );
